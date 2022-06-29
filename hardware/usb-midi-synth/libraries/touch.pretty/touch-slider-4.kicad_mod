@@ -1,0 +1,42 @@
+(module touch-slider-4 (layer F.Cu) (tedit 628DB49F)
+  (fp_text reference REF** (at -18.25 8) (layer F.SilkS) hide
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (fp_text value touch-slider-4 (at -19.15 -3.7) (layer F.Fab)
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (pad 1 smd custom (at 1 -6.5) (size 1.524 1.524) (layers F.Cu F.Paste F.Mask)
+    (options (clearance outline) (anchor circle))
+    (primitives
+      (gr_poly (pts
+         (xy -1 -1) (xy 0 -1) (xy 13.5 1.5) (xy 0 4) (xy 13.5 6.5)
+         (xy -1 6.5)) (width 0))
+    ))
+  (pad 2 smd custom (at 14.8 -6.7) (size 1.524 1.524) (layers F.Cu F.Paste F.Mask)
+    (options (clearance outline) (anchor circle))
+    (primitives
+      (gr_poly (pts
+         (xy 2.7 -0.8) (xy 3.7 -0.8) (xy 17.2 1.7) (xy 3.7 4.2) (xy 17.2 6.7)
+         (xy 2.7 6.7)) (width 0))
+      (gr_poly (pts
+         (xy 3.7 6.7) (xy 2.7 6.7) (xy -10.8 4.2) (xy 2.7 1.7) (xy -10.8 -0.8)
+         (xy 3.7 -0.8)) (width 0))
+    ))
+  (pad 4 smd custom (at 52.1 -6.7) (size 1.524 1.524) (layers F.Cu F.Paste F.Mask)
+    (options (clearance outline) (anchor circle))
+    (primitives
+      (gr_poly (pts
+         (xy 1.4 6.7) (xy 0.4 6.7) (xy -13.1 4.2) (xy 0.4 1.7) (xy -13.1 -0.8)
+         (xy 1.4 -0.8)) (width 0))
+    ))
+  (pad 3 smd custom (at 36.2 -6.4) (size 1.524 1.524) (layers F.Cu F.Paste F.Mask)
+    (options (clearance outline) (anchor circle))
+    (primitives
+      (gr_poly (pts
+         (xy -1.2 -1.1) (xy -0.2 -1.1) (xy 13.3 1.4) (xy -0.2 3.9) (xy 13.3 6.4)
+         (xy -1.2 6.4)) (width 0))
+      (gr_poly (pts
+         (xy -0.2 6.4) (xy -1.2 6.4) (xy -14.7 3.9) (xy -1.2 1.4) (xy -14.7 -1.1)
+         (xy -0.2 -1.1)) (width 0))
+    ))
+)
