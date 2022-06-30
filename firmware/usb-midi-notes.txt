@@ -1,0 +1,46 @@
+COMMANDS TO DUMP MIDI MESSAGES
+
+    aconnect -i      # this lists the available midi clients
+    aseqdump -p xx   # choose the "client number" output by aconnect that corresponds to your device. It's been 24 for me so far.
+
+## Interface descriptor
+
+Each USB MIDI device has a different descriptor depending on its functionality. Kind of like how a single physical usb device can encapsulate several USB Functions, a single MIDI USB Function can encapsulate several MIDI IN and MIDI OUT "jack descriptors".
+
+Because the initial version of this controller is only targetting a single, specific USB device, we probably don't need to worry about really understanding the way that USB MIDI devices are described. We just need to make sure that we understand the descriptor for this one device.
+
+Audio class interface descriptor:
+  - bInterfaceClass:     0x01 = AUDIO
+  - bInterfaceSubclass:  0x03 = MIDISTREAMING
+
+MIDI IN Jack Descriptor field values:
+  - bDescriptorType:     0x24 = CS_INTERFACE descriptor
+  - bDescriptorSubtype:  0x02 = MIDI_IN_JACK subtype; 0x03 = MIDI_OUT_JACK subtype
+  - bJackType:           0x01 = EMBEDDED
+
+
+## The acutal data
+
+USB-MIDI event packets are BULK IN transfers. A single USB-MIDI bulk IN transfer can contain several USB-MIDI event packets.
+
+Each MIDI event consists of 4 bytes:
+  - Byte 0 is split into 2 nybbles:
+    - Upper nybble: "cable number". In our case, this should always be 0. We can probably ignore it.
+    - Lower nybble: "code index number". Tells what the meaning of the MIDI event is.
+
+  - Bytes 1 - 3 depend on what the code index number is.
+
+
+Code indexes that the USB EWI appears to use (looks like it doesn't use all of em)
+  - 0x8 / 0x9 - Note off / note on
+    Denotes the start and stop of notes.
+
+  - 0xa - aftertouch / polyphonic key pressure
+    While a note is being played, air pressure data between 0 and 127 streams on this channel.
+
+  - 0xb - control change
+    "control change" messages can target one of up to 120 "controller channels". It appears that the USB EWI just uses control channel 2 to mirror the same data that's sent with aftertouch messages
+
+  - 0xe - pitch bend change
+    Contains a 14-bit value that should correspond to how much the pitch is to be bent.
+    Results from aseqdump don't seem to be consistent with how much I'm biting the mouthpiece??
