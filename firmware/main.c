@@ -8,7 +8,7 @@
 #include "dac.h"
 #include "my_dmac.h"
 #include "cprintf.h"
-
+#include "usbhost.h"
 
 void sys_init();
 void gpio_init();
@@ -21,12 +21,15 @@ void dac_init();
  */
 void change_volume(bool dir);
 
+static usbhost_controlxfer_t xfer __attribute__((aligned(4)));
+static uint8_t xfer_buf[64] __attribute__((aligned(16)));
+
 int main()
 {
     sys_init();
     gpio_init();
     set_output_pin(&mcu_ldo_en_pin, true);
-    set_output_pin(&mcu_vusb_host_enable_pin, true);
+    set_output_pin(&mcu_vusb_host_enable_pin, true);   for (volatile int i = 0; i < 4000000; i++);
 
     for (int i = 0; i < DAC_BUFSIZE; i++) {
         dac_buffer[0][i] = i % 2 ? 500 : 0;
@@ -35,6 +38,11 @@ int main()
 
     sercom3_init();
     dac_init();
+    usbhost_init();
+
+    cprintf(sercom3_putch, "\r\n\r\nhello\r\n");
+
+    usbhost_blocking_enumerate();
 
     uint16_t j = 0;
     while (1) {
