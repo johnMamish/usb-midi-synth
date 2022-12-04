@@ -19,7 +19,7 @@ typedef enum {
 void initialize_output_pin(const gpio_pin_t* pin);
 void deinitialize_output_pin(const gpio_pin_t* pin);
 void set_output_pin(const gpio_pin_t* pin, bool val);
-
+void toggle_output_pin(const gpio_pin_t* pin);
 void initialize_input_pin(const gpio_pin_t* pin, pull_dir_e pull);
 
 void initialize_af_pin(const gpio_pin_t* pin, int af_num);

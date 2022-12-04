@@ -18,6 +18,11 @@ void set_output_pin(const gpio_pin_t* pin, bool val)
         pin->port->OUTCLR.reg = (1 << pin->pin);
 }
 
+void toggle_output_pin(const gpio_pin_t* pin)
+{
+    pin->port->OUTTGL.reg = (1 << pin->pin);
+}
+
 void initialize_input_pin(const gpio_pin_t* pin, pull_dir_e pull)
 {
     pin->port->DIRCLR.reg = (1 << pin->pin);

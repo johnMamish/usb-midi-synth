@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define DAC_FSAMP 48000
-#define DAC_BUFSIZE 512
+#define DAC_BUFSIZE 64
 
 extern uint16_t dac_buffer[2][DAC_BUFSIZE];
 

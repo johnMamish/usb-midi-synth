@@ -4,6 +4,7 @@
 #include "dac.h"
 #include "my_dmac.h"
 #include "main.h"
+#include "port.h"
 
 uint16_t dac_buffer[2][DAC_BUFSIZE];
 
@@ -33,8 +34,8 @@ void dac_init()
 
     ////////////////////////////////////////////////////////////////
     // setup DMAC channel 0 to feed DAC on DAC empty signal
-    dmac_disable_channel(1);
-    DMAC->CHID.bit.ID = 1;
+    dmac_disable_channel(0);
+    DMAC->CHID.bit.ID = 0;
 
     // Trigger source is DAC empty
     //DMAC->CHCTRLB.reg = (2 << 22) | (3 << 5);
@@ -42,23 +43,23 @@ void dac_init()
     DMAC->CHCTRLB.bit.TRIGSRC = 0x28;
 
     // Enable transfer complete interrupts
-    DMAC->CHID.bit.ID = 1;
+    DMAC->CHID.bit.ID = 0;
     DMAC->CHINTENSET.bit.TCMPL = 1;
     NVIC_ISER[DMAC_IRQn / 32] = (1 << DMAC_IRQn);
 
-    dmac_base_descriptors[1].BTCTRL.bit.STEPSIZE = 0;   // step one beat at a time
-    dmac_base_descriptors[1].BTCTRL.bit.STEPSEL = 1;    // step size applies to source addr
-    dmac_base_descriptors[1].BTCTRL.bit.DSTINC = 0;     // don't increment dest addr
-    dmac_base_descriptors[1].BTCTRL.bit.SRCINC = 1;     // increment source addr
-    dmac_base_descriptors[1].BTCTRL.bit.BEATSIZE = 1;   // beat size is 16-bit halfword
-    dmac_base_descriptors[1].BTCTRL.bit.BLOCKACT = 1;   // block interrupt on transfer complete
-    dmac_base_descriptors[1].BTCTRL.bit.EVOSEL = 0;
-    dmac_base_descriptors[1].BTCTRL.bit.VALID = 1;
+    dmac_base_descriptors[0].BTCTRL.bit.STEPSIZE = 0;   // step one beat at a time
+    dmac_base_descriptors[0].BTCTRL.bit.STEPSEL = 1;    // step size applies to source addr
+    dmac_base_descriptors[0].BTCTRL.bit.DSTINC = 0;     // don't increment dest addr
+    dmac_base_descriptors[0].BTCTRL.bit.SRCINC = 1;     // increment source addr
+    dmac_base_descriptors[0].BTCTRL.bit.BEATSIZE = 1;   // beat size is 16-bit halfword
+    dmac_base_descriptors[0].BTCTRL.bit.BLOCKACT = 1;   // block interrupt on transfer complete
+    dmac_base_descriptors[0].BTCTRL.bit.EVOSEL = 0;
+    dmac_base_descriptors[0].BTCTRL.bit.VALID = 1;
 
-    dmac_base_descriptors[1].BTCNT.reg = DAC_BUFSIZE;
-    dmac_base_descriptors[1].SRCADDR.reg = (uint32_t)(&dac_buffer[0][DAC_BUFSIZE]);
-    dmac_base_descriptors[1].DSTADDR.reg = (uint32_t)(&(DAC->DATABUF.reg));
-    dmac_base_descriptors[1].DESCADDR.reg = (uint32_t)(&dmac_dac_descriptor_1);
+    dmac_base_descriptors[0].BTCNT.reg = DAC_BUFSIZE;
+    dmac_base_descriptors[0].SRCADDR.reg = (uint32_t)(&dac_buffer[0][DAC_BUFSIZE]);
+    dmac_base_descriptors[0].DSTADDR.reg = (uint32_t)(&(DAC->DATABUF.reg));
+    dmac_base_descriptors[0].DESCADDR.reg = (uint32_t)(&dmac_dac_descriptor_1);
 
     dmac_dac_descriptor_1.BTCTRL.bit.STEPSIZE = 0;   // step one beat at a time
     dmac_dac_descriptor_1.BTCTRL.bit.STEPSEL = 1;    // step size applies to source addr
@@ -72,9 +73,9 @@ void dac_init()
     dmac_dac_descriptor_1.BTCNT.reg = DAC_BUFSIZE;
     dmac_dac_descriptor_1.SRCADDR.reg = (uint32_t)(&dac_buffer[1][DAC_BUFSIZE]);
     dmac_dac_descriptor_1.DSTADDR.reg = (uint32_t)(&(DAC->DATABUF.reg));
-    dmac_dac_descriptor_1.DESCADDR.reg = (uint32_t)(&dmac_base_descriptors[1]);
+    dmac_dac_descriptor_1.DESCADDR.reg = (uint32_t)(&dmac_base_descriptors[0]);
 
-    dmac_enable_channel(1);
+    dmac_enable_channel(0);
 
     ////////////////////////////////////////////////////////////////
     // configure the timer event to trigger the DAC via the Event System
@@ -97,6 +98,7 @@ void dac_init()
     DAC->CTRLB.bit.REFSEL = 1;
     DAC->CTRLB.bit.BDWP   = 1;
     DAC->CTRLB.bit.EOEN   = 1;
+    DAC->CTRLB.bit.LEFTADJ = 1;
 
     DAC->EVCTRL.bit.STARTEI = 1;
     DAC->EVCTRL.bit.EMPTYEO = 1;

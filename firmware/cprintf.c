@@ -1,5 +1,7 @@
 #include "cprintf.h"
 
+#include <ctype.h>
+
 void itoa(int n, char* out, int base)
 {
     int i = 0;
@@ -341,4 +343,3 @@ void cprintf(void (*putc)(char), const char* fmt, ...)
     va_end(args);
     return;
 }
-

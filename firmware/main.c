@@ -4,6 +4,8 @@
 #include "main.h"
 #include "./clock.h"
 
+#include "dsp_util.h"
+
 #include "sercom3.h"
 #include "dac.h"
 #include "my_dmac.h"
@@ -24,17 +26,60 @@ void change_volume(bool dir);
 static usbhost_controlxfer_t xfer __attribute__((aligned(4)));
 static uint8_t xfer_buf[64] __attribute__((aligned(16)));
 
+typedef struct audio_state {
+    int32_t phase;     // current phase in samples; Q24.8
+    uint32_t period;   // period in samples; uQ24.8
+    uint32_t volume;   // uQ.16
+} audio_state_t;
+
+void render_audio(uint16_t* target, audio_state_t* s, int len)
+{
+    for (int i = 0; i < len; i++) {
+	toggle_output_pin(&slider_1_pin);
+        int32_t sample = (uint32_t)sine_u16(((s->phase << 13) / (s->period >> 2)) << 1);
+        sample = (sample * s->volume) >> 8;
+        target[i] = ((uint16_t)sample + 0x8000);
+
+        s->phase += (1 << 8);
+        while (s->phase >= s->period) {
+            s->phase -= s->period;
+        }
+    }
+}
+
+// uQ24.8
+// starts at midi note 0, which is inaudible.
+const uint32_t midi_note_periods[] = {
+ 1502972,  1418617,  1338996,  1263844,  1192910,  1125957,  1062762,  1003114,   946813,   893673,   843515,   796172,
+  751486,   709309,   669498,   631922,   596455,   562979,   531381,   501557,   473407,   446836,   421757,   398086,
+  375743,   354654,   334749,   315961,   298227,   281489,   265690,   250778,   236703,   223418,   210879,   199043,
+  187872,   177327,   167375,   157981,   149114,   140745,   132845,   125389,   118352,   111709,   105439,    99521,
+   93936,    88664,    83687,    78990,    74557,    70372,    66423,    62695,    59176,    55855,    52720,    49761,
+   46968,    44332,    41844,    39495,    37278,    35186,    33211,    31347,    29588,    27927,    26360,    24880,
+   23484,    22166,    20922,    19748,    18639,    17593,    16606,    15674,    14794,    13964,    13180,    12440,
+   11742,    11083,    10461,     9874,     9320,     8797,     8303,     7837,     7397,     6982,     6590,     6220,
+    5871,     5541,     5230,     4937,     4660,     4398,     4151,     3918,     3698,     3491,     3295,     3110,
+    2935,     2771,     2615,     2468,     2330,     2199,     2076,     1959,     1849,     1745,     1647,     1555,
+};
+
 int main()
 {
     sys_init();
     gpio_init();
     set_output_pin(&mcu_ldo_en_pin, true);
-    set_output_pin(&mcu_vusb_host_enable_pin, true);   for (volatile int i = 0; i < 4000000; i++);
+    set_output_pin(&mcu_vusb_host_enable_pin, true);   for (volatile int i = 0; i < 100000; i++);
 
-    for (int i = 0; i < DAC_BUFSIZE; i++) {
-        dac_buffer[0][i] = i % 2 ? 500 : 0;
-        dac_buffer[1][i] = 250;
-    }
+    audio_state_t osc = {.phase = 0, .period = ((DAC_BUFSIZE / 2) << 8), .volume = (16)};
+
+    render_audio(dac_buffer[0], &osc, DAC_BUFSIZE);
+    render_audio(dac_buffer[1], &osc, DAC_BUFSIZE);
+
+    initialize_output_pin(&led_hiz_pin);
+
+    //change_volume(true);
+    //change_volume(true);
+    //change_volume(false);
+    //change_volume(false);
 
     sercom3_init();
     dac_init();
@@ -44,9 +89,55 @@ int main()
 
     usbhost_blocking_enumerate();
 
+    cprintf(sercom3_putch, "EWI enumerated\r\n");
+
+    int count = 0;
     uint16_t j = 0;
+    uint8_t ewi_data[64];
+
     while (1) {
+        // update audio generation parameters according to what was
+        // while (!midi_queue.empty())
+        //     update_audio_generator(&oscillator, &midi);
+        int len = -1;
+        int er = usbhost_in_xfer_blocking(1, ewi_data, 64, &len);
+
+        if (er == -3) {
+            USB->HOST.HostPipe[1].PINTFLAG.reg |= (1 << 2);
+        } else if (er == 0) {
+            for (int i = 0; i < len; i += 4) {
+                if (ewi_data[i] == 0x0b) {
+                    //cprintf(sercom3_putch, "pressure: %i\r\n", ewi_data[i + 3]);
+                    osc.volume = ewi_data[i + 3];
+                } else if (ewi_data[i] == 0x0d) {
+                    // ignore, data is same as above
+                } else if (ewi_data[i] == 0x09) {
+                    //cprintf(sercom3_putch, "note %i, velocity %i\r\n", ewi_data[i + 2], ewi_data[i + 3]);
+                    if (ewi_data[i + 3] > 0)
+                        osc.period = midi_note_periods[ewi_data[i + 2]];
+                } else if (ewi_data[i] == 0x0e) {
+                    // pitch bend
+
+                }
+            }
+        }
+        // generate audio
+        if (dac_buffer_ready) {
+            dac_buffer_ready = 0;
+            uint8_t backbuf = (dac_frontbuffer + 1) % 2;
+            render_audio(dac_buffer[backbuf], &osc, DAC_BUFSIZE);
+            count++;
+
+	    if (dac_overflow_detect) {
+		set_output_pin(&led_hiz_pin, true);
+	    } else {
+		set_output_pin(&led_hiz_pin, false);
+	    }
+	    dac_overflow_detect = 0;
+        }
     }
+
+    while(1);
 }
 
 /**
@@ -94,7 +185,6 @@ void sys_init()
     // enable systick
     SYSTICK->RVR = 0x00ffffff;
 
-
     dmac_init();
 }
 
@@ -123,6 +213,13 @@ void gpio_init()
     initialize_output_pin(&volume_up_dn_pin);
     set_output_pin(&volume_clk_pin, false);
     initialize_output_pin(&volume_clk_pin);
+
+    ////////////////////////////////////////////////////////////////
+    // steal slider 1 and 2 to be debug output pins
+    set_output_pin(&slider_1_pin, false);
+    set_output_pin(&slider_2_pin, false);
+    initialize_output_pin(&slider_1_pin);
+    initialize_output_pin(&slider_2_pin);
 }
 
 /**
